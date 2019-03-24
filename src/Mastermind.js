@@ -1,6 +1,8 @@
 import React, {Component} from 'react';
 import './Mastermind.css';
 
+import MastermindTable from './MastermindTable'
+
 
 const red = require('./images/redCircle.png');
 const blue = require('./images/blueCircle.png');
@@ -12,137 +14,6 @@ const emptyCircle = require('./images/emptyCircle.png');
 
 
 const NUM_GUESSES = 8;
-
-
-class MastermindTableRowFeedback extends Component
-{
-
-	nonFilledCircle = {
-		color: emptyCircle,
-		colorName: 'Empty circle'
-	};
-
-
-	constructor(props)
-	{
-		super(props);
-	}
-
-
-	feedbackCircles()
-	{
-		if (this.props.rowIdx !== 0 || this.props.gameIsOver === true)
-		{
-			let feedback = [this.nonFilledCircle, this.nonFilledCircle, this.nonFilledCircle, this.nonFilledCircle];
-
-
-			return (
-				<table>
-					<tbody className="feedback_table">
-						<tr>
-							<td>
-								<img className="small_circle" src={feedback[0].color} alt={feedback[0].colorName}/>
-							</td>
-							<td>
-								<img className="small_circle" src={feedback[1].color} alt={feedback[1].colorName}/>
-							</td>
-						</tr>
-						<tr>
-							<td>
-								<img className="small_circle" src={feedback[2].color} alt={feedback[2].colorName}/>
-							</td>
-							<td>
-								<img className="small_circle" src={feedback[3].color} alt={feedback[3].colorName}/>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			);
-		}
-	}
-
-
-	render()
-	{
-		return (<td key={this.props.rowIdx}>{this.feedbackCircles()}</td>);
-	}
-}
-
-
-class MastermindTableRow extends Component
-{
-	constructor(props)
-	{
-		super(props);
-	}
-
-
-	render()
-	{
-		return (
-			this.props.row.map((circle, colIdx) =>
-				<td key={colIdx} onClick={() => this.props.handleClick(this.props.rowIdx, colIdx)}>
-					<img className="large_circle" src={circle.color} alt={circle.colorName}/>
-				</td>
-			)
-		);
-	}
-}
-
-
-class MastermindTable extends Component
-{
-	constructor(props)
-	{
-		super(props);
-	}
-
-
-	topRowIsFull()
-	{
-		console.log("checking");
-		let has_empty = false;
-		this.props.mastermindArray[0].forEach((v) => has_empty = has_empty || v.colorName === "Empty circle");
-		return !has_empty;
-	}
-
-
-	render()
-	{
-
-		let gameIsOver = false;
-
-		if (this.topRowIsFull())
-		{
-			console.log("is full");
-			if (this.props.mastermindArray.length === NUM_GUESSES)
-			{
-				console.log("Game Over");
-				gameIsOver = true;
-			}
-			else
-			{
-				this.props.addNewRow();
-			}
-		}
-
-		return (
-			<table className="mastermind_table">
-				<tbody>
-				{
-					this.props.mastermindArray.map((row, rowIdx) =>
-						<tr key={rowIdx}>
-							<MastermindTableRow row={row} rowIdx={rowIdx} handleClick={this.props.handleClick}/>
-							<MastermindTableRowFeedback row={row} rowIdx={rowIdx} gameIsOver={gameIsOver}/>
-						</tr>
-					)
-				}
-				</tbody>
-			</table>
-		);
-	}
-}
-
 
 class Mastermind extends Component
 {
@@ -189,6 +60,7 @@ class Mastermind extends Component
 
 		this.handleClick = this.handleClick.bind(this);
 		this.addNewRow = this.addNewRow.bind(this);
+		this.addNewFeedbackRow = this.addNewFeedbackRow.bind(this);
 	}
 
 
@@ -200,7 +72,7 @@ class Mastermind extends Component
 
 	selectedPaletteCircle(circle)
 	{
-		console.log('selected a palette color', circle.colorName);
+		//console.log('selected a palette color', circle.colorName);
 		this.setState({statusCircle: circle});
 	}
 
@@ -229,7 +101,6 @@ class Mastermind extends Component
 				</tbody>
 			</table>
 		);
-
 	}
 
 
@@ -259,12 +130,71 @@ class Mastermind extends Component
 
 	handleClick(rowIdx, colIdx)
 	{
-		console.log("Received click at row: " + rowIdx + ", col: " + colIdx);
+		// Only process clicks for the top row. Should probably just not put onClicks in rows that aren't the top.
+		if(rowIdx !== 0)
+		{
+			return;
+		}
 
+		// Make a copy of the board so we can make some modifications.
 		let newBoard = JSON.parse(JSON.stringify(this.state.mastermindArray));
-		newBoard[rowIdx][colIdx] = this.state.statusCircle;
+		// Also make a copy of the feedback array, even though we may not modify it.
+		let newFeedbackArray = JSON.parse(JSON.stringify(this.state.feedbackArray));
 
-		this.setState({mastermindArray: newBoard});
+		// Set the color for the clicked circle
+		newBoard[rowIdx][colIdx].color = this.state.statusCircle.color;
+		newBoard[rowIdx][colIdx].colorName = this.state.statusCircle.colorName;
+
+		// Check if the top row is filled now.
+		let has_empty = false;
+		newBoard[0].forEach((v) => has_empty = has_empty || v.colorName === "Empty circle");
+
+		// If the top row is full, do stuff to add a new row.
+		if(!has_empty)
+		{
+			// Create the feedback circles for the most recently completed row.
+			let newFeedbackRow = [];
+
+			let numCorrectSpots = 0;
+			newBoard[0].forEach((v, idx) => numCorrectSpots += v.colorName === this.state.winningColorsArray[idx].colorName ? 1 : 0);
+
+			console.log("Num Correct Spots: " + numCorrectSpots);
+
+			for(let i = 0; i < 4; i++)
+			{
+				// Add as many red circles as needed.
+				if(i < numCorrectSpots)
+				{
+					newFeedbackRow.push({
+						color: red,
+						colorName: 'Red'
+					});
+				}
+				// The rest are empty circles.
+				else
+				{
+					newFeedbackRow.push({
+						color: emptyCircle,
+						colorName: 'Empty circle'
+					});
+				}
+			}
+
+			newFeedbackArray.unshift(newFeedbackRow);
+
+
+			// Now add in a new row to the mastermindArray, but only if we haven't exceeded the max number of guesses.
+			if(newBoard.length < NUM_GUESSES)
+			{
+				let newGuessRow = Array(4).fill(JSON.parse(JSON.stringify(this.nonFilledCircle)));
+
+				// Unshift will put the newGuessRow at the beginning of the newBoard array.
+				newBoard.unshift(newGuessRow);
+			}
+		}
+
+		// Finally, update the state with the new board and (possible new) feedback.
+		this.setState({mastermindArray: newBoard, feedbackArray: newFeedbackArray});
 	}
 
 
@@ -276,6 +206,28 @@ class Mastermind extends Component
 		newBoard.unshift(emptyRow);
 
 		this.setState({mastermindArray: newBoard});
+	}
+
+
+	addNewFeedbackRow()
+	{
+		let emptyRow = [this.nonFilledCircle, this.nonFilledCircle, this.nonFilledCircle, this.nonFilledCircle];
+
+		let numCorrectSpots = 0;
+		this.state.mastermindArray[0].forEach((v, idx) => numCorrectSpots += v.colorName === this.state.winningColorsArray[idx].colorName ? 1 : 0);
+
+		console.log("Num Correct Spots: " + numCorrectSpots);
+
+		for(let i = 0; i < numCorrectSpots; i++)
+		{
+			emptyRow[i].color = red;
+			emptyRow[i].colorName = "Red";
+		}
+
+		let newBoard = JSON.parse(JSON.stringify(this.state.feedbackArray));
+		newBoard.unshift(emptyRow);
+
+		this.setState({feedbackArray: newBoard});
 	}
 
 
@@ -306,7 +258,7 @@ class Mastermind extends Component
 				{this.statusRow()}
 				{this.winningRow()}
 				<div style={{height: "400px"}}>&nbsp;</div>
-				<MastermindTable mastermindArray={this.state.mastermindArray} feedbackArray={this.state.feedbackArray} handleClick={this.handleClick} addNewRow={this.addNewRow}/>
+				<MastermindTable mastermindArray={this.state.mastermindArray} feedbackArray={this.state.feedbackArray} winningColorsArray={this.state.winningColorsArray} handleClick={this.handleClick} addNewRow={this.addNewRow} addNewFeedbackRow={this.addNewFeedbackRow}/>
 				{this.paletteCircles()}
 
 			</div>
