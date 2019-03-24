@@ -5,6 +5,7 @@ class MastermindTableRowFeedback extends Component
 {
 	feedbackCircles()
 	{
+		// The 'current' row doesn't have a feedback row, so exclude it.
 		if (this.props.rowIdx >= 0)
 		{
 			return (
