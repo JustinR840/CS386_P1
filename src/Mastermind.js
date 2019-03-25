@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import './Mastermind.css';
 
 import MastermindTable from './MastermindTable'
+import MastermindPalette from './MastermindPalette'
 
 
 const red = require('./images/redCircle.png');
@@ -59,6 +60,7 @@ class Mastermind extends Component
 		};
 
 		this.handleClick = this.handleClick.bind(this);
+		this.handlePaletteCircleClick = this.handlePaletteCircleClick.bind(this);
 	}
 
 
@@ -68,6 +70,7 @@ class Mastermind extends Component
 	}
 
 
+	// rowIdx should always be 0.
 	handleClick(rowIdx, colIdx)
 	{
 		// Only process clicks for the top row.
@@ -94,32 +97,7 @@ class Mastermind extends Component
 		if(!has_empty)
 		{
 			// Create the feedback circles for the most recently completed row.
-			let newFeedbackRow = [];
-
-			let numCorrectSpots = 0;
-			newBoard[0].forEach((v, idx) => numCorrectSpots += v.colorName === this.state.winningColorsArray[idx].colorName ? 1 : 0);
-
-			console.log("Num Correct Spots: " + numCorrectSpots);
-
-			for(let i = 0; i < 4; i++)
-			{
-				// Add as many red circles as needed. TODO: Make this area better.
-				if(i < numCorrectSpots)
-				{
-					newFeedbackRow.push({
-						color: red,
-						colorName: 'Red'
-					});
-				}
-				// The rest are empty circles.
-				else
-				{
-					newFeedbackRow.push({
-						color: emptyCircle,
-						colorName: 'Empty circle'
-					});
-				}
-			}
+			let newFeedbackRow = this.createNewFeedbackRow(newBoard[0], this.state.winningColorsArray);
 
 			newFeedbackArray.unshift(newFeedbackRow);
 
@@ -139,9 +117,58 @@ class Mastermind extends Component
 	}
 
 
-	selectedPaletteCircle(circle)
+	createNewFeedbackRow(row, winningColors)
 	{
-		// TODO: I don't think this even needs to be it's own function. Perhaps move this to the (future) click handler for the palette circles?
+		let newFeedbackRow = [];
+
+		let numCorrectSpots = this.getNumberOfCorrectSpots(row, winningColors);
+		let numCorrectColors = this.getNumberOfCorrectColors(row, winningColors);
+
+		for(let i = 0; i < numCorrectSpots; i++)
+		{
+			// Add as many red circles as needed.
+			if(i < numCorrectSpots)
+			{
+				newFeedbackRow.push({
+					color: red,
+					colorName: 'Red'
+				});
+			}
+		}
+
+		for(let i = 0; i < numCorrectColors; i++)
+		{
+			// Add as many white circles as needed.
+			if(i < numCorrectColors)
+			{
+				newFeedbackRow.push({
+					color: emptyCircle,
+					colorName: 'Empty circle'
+				});
+			}
+		}
+
+		return newFeedbackRow;
+	}
+
+
+	getNumberOfCorrectSpots(row, winningColors)
+	{
+		let numCorrectSpots = 0;
+		row.forEach((v, idx) => numCorrectSpots += v.colorName === winningColors[idx].colorName ? 1 : 0);
+
+		return numCorrectSpots;
+	}
+
+
+	getNumberOfCorrectColors(row, winningColors)
+	{
+		return 0;
+	}
+
+
+    handlePaletteCircleClick(circle)
+	{
 		this.setState({statusCircle: circle});
 	}
 
@@ -149,28 +176,6 @@ class Mastermind extends Component
 	getRandomIdx(low, high)
 	{
 		return Math.floor(Math.random() * (high - low + 1) + low);
-	}
-
-
-	paletteCircles()
-	{
-		// TODO: Move this to it's own component
-		return (
-			<table className="palette_circles">
-				<tbody>
-					<tr>
-						{
-							// TODO: Have the onClick handler be a separate function in the Mastermind component.
-							this.paletteColors.map((paletteElement, idx) =>
-								<td key={idx} onClick={() => this.selectedPaletteCircle(paletteElement)}>
-									<img className="large_circle" src={paletteElement.color} alt={paletteElement.colorName}/>
-								</td>
-							)
-						}
-					</tr>
-				</tbody>
-			</table>
-		);
 	}
 
 
@@ -226,7 +231,7 @@ class Mastermind extends Component
 				{this.winningRow()}
 				<div style={{height: "400px"}}>&nbsp;</div>
 				<MastermindTable mastermindArray={this.state.mastermindArray} feedbackArray={this.state.feedbackArray} winningColorsArray={this.state.winningColorsArray} handleClick={this.handleClick} addNewRow={this.addNewRow}/>
-				{this.paletteCircles()}
+				<MastermindPalette paletteColors={this.paletteColors} handlePaletteCircleClick={this.handlePaletteCircleClick}/>
 
 			</div>
 		);
