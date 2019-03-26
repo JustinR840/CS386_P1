@@ -1,9 +1,6 @@
 import React, {Component} from 'react';
 import './Mastermind.css';
 
-import MastermindTable from './MastermindTable'
-import MastermindPalette from './MastermindPalette'
-
 
 const red = require('./images/redCircle.png');
 const blue = require('./images/blueCircle.png');
@@ -203,6 +200,26 @@ class Mastermind extends Component
 	}
 
 
+	mastermindPalette(props)
+	{
+		return (
+			<table className="palette_circles">
+				<tbody>
+				<tr>
+					{
+						props.paletteColors.map((paletteElement, idx) =>
+							<td key={idx} onClick={() => props.handlePaletteCircleClick(paletteElement)}>
+								<img className="large_circle" src={paletteElement.color} alt={paletteElement.colorName}/>
+							</td>
+						)
+					}
+				</tr>
+				</tbody>
+			</table>
+		);
+	}
+
+
 	winningRow()
 	{
 		return (
@@ -223,15 +240,74 @@ class Mastermind extends Component
 	}
 
 
+	mastermindTableRowFeedback(props)
+	{
+		// The 'current' row doesn't have a feedback row, so exclude it.
+		if (props.rowIdx >= 0)
+		{
+			return (
+				<td key={props.rowIdx}>
+					<table>
+						<tbody className="feedback_table">
+						<tr>
+							{
+								props.feedbackRow.map((circle, idx) =>
+									<td key={idx}><img className="small_circle" src={circle.color} alt={circle.colorName}/></td>
+								)
+							}
+						</tr>
+						</tbody>
+					</table>
+				</td>
+			);
+		}
+		else
+		{
+			return <td key={this.props.rowIdx}></td>
+		}
+	}
+
+
+	mastermindTable(props)
+	{
+		return (
+			<table className="mastermind_table">
+				<tbody>
+				{
+					props.mastermindArray.map((row, rowIdx) =>
+						<tr key={rowIdx}>
+							{this.mastermindTableRow({row: row, rowIdx: rowIdx, handleClick: this.handleClick})}
+							{this.mastermindTableRowFeedback({feedbackRow: props.feedbackArray[rowIdx - 1], rowIdx: rowIdx - 1})}
+						</tr>
+					)
+				}
+				</tbody>
+			</table>
+		);
+	}
+
+
+	mastermindTableRow(props)
+	{
+		return (
+			props.row.map((circle, colIdx) =>
+				<td key={colIdx} onClick={() => props.handleClick(props.rowIdx, colIdx)}>
+					<img className="large_circle" src={circle.color} alt={circle.colorName}/>
+				</td>
+			)
+		);
+	}
+
+
 	render()
 	{
 		return (
 			<div className="Mastermind">
 				{this.statusRow()}
 				{this.winningRow()}
-				<div style={{height: "400px"}}>&nbsp;</div>
-				<MastermindTable mastermindArray={this.state.mastermindArray} feedbackArray={this.state.feedbackArray} winningColorsArray={this.state.winningColorsArray} handleClick={this.handleClick} addNewRow={this.addNewRow}/>
-				<MastermindPalette paletteColors={this.paletteColors} handlePaletteCircleClick={this.handlePaletteCircleClick}/>
+				<div style={{height: 500 - (this.state.mastermindArray.length * 58) + "px"}}>&nbsp;</div>
+				{this.mastermindTable({mastermindArray: this.state.mastermindArray, feedbackArray: this.state.feedbackArray, winningColorsArray: this.state.winningColorsArray, handleClick: this.handleClick, addNewRow: this.addNewRow})}
+				{this.mastermindPalette({paletteColors: this.paletteColors, handlePaletteCircleClick: this.handlePaletteCircleClick})}
 
 			</div>
 		);
