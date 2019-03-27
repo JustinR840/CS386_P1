@@ -12,6 +12,10 @@ const emptyCircle = require('./images/emptyCircle.png');
 
 
 const NUM_GUESSES = 8;
+const GAME_STATE = {
+	GAME_OVER: 1,
+	GAME_IN_PROGRESS: 2
+};
 
 class Mastermind extends Component
 {
@@ -42,19 +46,30 @@ class Mastermind extends Component
 			this.nonFilledCircle
 		];
 
+		// let winning_colors = [
+		// 	this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
+		// 	this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
+		// 	this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
+		// 	this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)]
+		// ];
+
 		let winning_colors = [
-			this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
-			this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
-			this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
-			this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)]
+			this.paletteColors[0],
+			this.paletteColors[0],
+			this.paletteColors[0],
+			this.paletteColors[0]
 		];
 
 		this.state = {
 			mastermindArray: [emptyRow],
 			feedbackArray: [],
 			winningColorsArray: winning_colors,
-			statusCircle: {color: emptyCircle, colorName: 'Empty circle'}
+			statusCircle: {color: emptyCircle, colorName: 'Empty circle'},
+			showWinningCircles: true,
+			gameState: GAME_STATE.GAME_IN_PROGRESS
 		};
+
+		this.toggleWinningRowVisibility = this.toggleWinningRowVisibility.bind(this);
 	}
 
 
@@ -69,10 +84,14 @@ class Mastermind extends Component
 	{
 		// Only process clicks for the top row.
 		// TODO: Should probably just not put onClicks in rows that aren't the top.
-		if(rowIdx !== 0)
+		if(rowIdx !== 0 || this.state.gameState === GAME_STATE.GAME_OVER)
 		{
 			return;
 		}
+
+		// We'll possibly be updating these so make a copy.
+		let newShowWinningCircles = this.state.showWinningCircles;
+		let newGameState = GAME_STATE.GAME_IN_PROGRESS;
 
 		// Make a copy of the board so we can make some modifications.
 		let newBoard = JSON.parse(JSON.stringify(this.state.mastermindArray));
@@ -84,20 +103,30 @@ class Mastermind extends Component
 		newBoard[rowIdx][colIdx].colorName = this.state.statusCircle.colorName;
 
 		// Check if the top row is filled now.
-		let has_empty = false;
-		newBoard[0].forEach((v) => has_empty = has_empty || v.colorName === "Empty circle");
+		let top_row_filled = true;
+		newBoard[0].forEach((v) => top_row_filled = top_row_filled && v.colorName !== "Empty circle");
 
 		// If the top row is full, do stuff to add a new row.
-		if(!has_empty)
+		if(top_row_filled)
 		{
 			// Create the feedback circles for the most recently completed row.
 			let newFeedbackRow = this.createNewFeedbackRow(newBoard[0], this.state.winningColorsArray);
 
 			newFeedbackArray.unshift(newFeedbackRow);
 
+			// Check the feedback row to see if they're all red circles (and the length is correct), indicating a win.
+			let all_are_red = true;
+			newFeedbackRow.map((v) => all_are_red = all_are_red && v.colorName === "Red");
+			all_are_red = all_are_red && newFeedbackRow.length === this.state.winningColorsArray.length;
 
+			// Check if game is over.
+			if(all_are_red || newBoard.length === NUM_GUESSES)
+			{
+				newShowWinningCircles = true;
+				newGameState = GAME_STATE.GAME_OVER;
+			}
 			// Now add in a new row to the mastermindArray, but only if we haven't exceeded the max number of guesses.
-			if(newBoard.length < NUM_GUESSES)
+			else if(newBoard.length < NUM_GUESSES)
 			{
 				let newGuessRow = Array(4).fill(JSON.parse(JSON.stringify(this.nonFilledCircle)));
 
@@ -107,7 +136,7 @@ class Mastermind extends Component
 		}
 
 		// Finally, update the state with the new board and (possible new) feedback.
-		this.setState({mastermindArray: newBoard, feedbackArray: newFeedbackArray});
+		this.setState({mastermindArray: newBoard, feedbackArray: newFeedbackArray, showWinningCircles: newShowWinningCircles, gameState: newGameState});
 	}
 
 
@@ -180,6 +209,58 @@ class Mastermind extends Component
 	}
 
 
+	resetGame()
+	{
+		let emptyRow = [
+			this.nonFilledCircle,
+			this.nonFilledCircle,
+			this.nonFilledCircle,
+			this.nonFilledCircle
+		];
+
+		let winning_colors = [
+			this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
+			this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
+			this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)],
+			this.paletteColors[this.getRandomIdx(0, this.paletteColors.length - 1)]
+		];
+
+		this.setState({
+			mastermindArray: [emptyRow],
+			feedbackArray: [],
+			winningColorsArray: winning_colors,
+			statusCircle: {color: emptyCircle, colorName: 'Empty circle'},
+			showWinningCircles: this.state.showWinningCircles,
+			gameState: GAME_STATE.GAME_IN_PROGRESS
+		});
+	}
+
+
+	toggleWinningRowVisibility(event)
+	{
+		this.setState({showWinningCircles: event.target.checked});
+	}
+
+
+	howToPlay()
+	{
+		window.open("https://en.wikipedia.org/wiki/Mastermind_(board_game)#Gameplay_and_rules", "_blank");
+	}
+
+
+	controlRow()
+	{
+		return (
+			<div>
+				<button onClick={() => this.resetGame()}>Reset Game</button>
+				<button onClick={() => this.howToPlay()}>How To Play</button>
+				<br/>
+				<label>Show Winning Circles<input type="checkbox" name="showWinningCircles" checked={this.state.showWinningCircles} onChange={this.toggleWinningRowVisibility}/></label>
+			</div>
+		);
+	}
+
+
 	statusRow()
 	{
 		let {
@@ -206,9 +287,11 @@ class Mastermind extends Component
 
 	winningRow()
 	{
-		return (
-			<table className="winning_row">
-				<tbody>
+		if(this.state.showWinningCircles)
+		{
+			return (
+				<table className="winning_row">
+					<tbody>
 					<tr>
 						{
 							this.state.winningColorsArray.map((v, idx) =>
@@ -218,9 +301,10 @@ class Mastermind extends Component
 							)
 						}
 					</tr>
-				</tbody>
-			</table>
-		);
+					</tbody>
+				</table>
+			);
+		}
 	}
 
 
@@ -229,15 +313,15 @@ class Mastermind extends Component
 		return (
 			<table className="palette_circles">
 				<tbody>
-				<tr>
-					{
-						this.paletteColors.map((paletteElement, idx) =>
-							<td key={idx} onClick={() => this.handlePaletteCircleClick(paletteElement)}>
-								<img className="large_circle" src={paletteElement.color} alt={paletteElement.colorName}/>
-							</td>
-						)
-					}
-				</tr>
+					<tr>
+						{
+							this.paletteColors.map((paletteElement, idx) =>
+								<td key={idx} onClick={() => this.handlePaletteCircleClick(paletteElement)}>
+									<img className="large_circle" src={paletteElement.color} alt={paletteElement.colorName}/>
+								</td>
+							)
+						}
+					</tr>
 				</tbody>
 			</table>
 		);
@@ -253,7 +337,7 @@ class Mastermind extends Component
 					this.state.mastermindArray.map((row, rowIdx) =>
 						<tr key={rowIdx}>
 							{this.mastermindTableRow({row: row, rowIdx: rowIdx})}
-							{this.mastermindTableRowFeedback({feedbackRow: this.state.feedbackArray[rowIdx - 1], rowIdx: rowIdx - 1})}
+							{this.mastermindTableRowFeedback({feedbackRow: this.state.feedbackArray[rowIdx], rowIdx: rowIdx})}
 						</tr>
 					)
 				}
@@ -277,8 +361,8 @@ class Mastermind extends Component
 
 	mastermindTableRowFeedback(props)
 	{
-		// The 'current' row doesn't have a feedback row, so exclude it.
-		if (props.rowIdx >= 0)
+		// The 'current' row doesn't have a feedback row, so exclude it. TODO: Better comment
+		if (props.feedbackRow !== undefined)
 		{
 			return (
 				<td key={props.rowIdx}>
@@ -304,13 +388,36 @@ class Mastermind extends Component
 	}
 
 
+	endGameText()
+	{
+		if(this.state.gameState === GAME_STATE.GAME_OVER)
+		{
+			// Check the feedback row to see if they're all red circles (and the length is correct), indicating a win.
+			let all_are_red = true;
+			this.state.feedbackArray[0].map((v) => all_are_red = all_are_red && v.colorName === "Red");
+			all_are_red = all_are_red && this.state.feedbackArray[0].length === this.state.winningColorsArray.length;
+
+			if(all_are_red)
+			{
+				return (<b>You Win!</b>);
+			}
+			else
+			{
+				return (<b>You Lose!</b>);
+			}
+		}
+	}
+
+
 	render()
 	{
 		return (
 			<div className="Mastermind">
 				{this.statusRow()}
+				{this.controlRow()}
 				{this.winningRow()}
-				<div style={{height: 500 - (this.state.mastermindArray.length * 58) + "px"}}>&nbsp;</div>
+				{this.endGameText()}
+				<div style={{height: 600 - (this.state.mastermindArray.length * 58) - (this.state.showWinningCircles * 60) - (this.state.gameState === GAME_STATE.GAME_OVER ? 21 : 0) + "px"}}>&nbsp;</div>
 				{this.mastermindTable()}
 				{this.mastermindPalette()}
 
