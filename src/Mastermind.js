@@ -388,7 +388,7 @@ class Mastermind extends Component
 	// from createFeedbackRow).
 	mastermindTableRowFeedback(props)
 	{
-		// The 'current' row doesn't have a feedback row, so exclude it. TODO: Better comment
+		// For when we don't have any feedback rows (the game has just started).
 		if (props.feedbackRow !== undefined)
 		{
 			return (
