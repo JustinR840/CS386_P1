@@ -55,9 +55,6 @@ class Mastermind extends Component
 			winningColorsArray: winning_colors,
 			statusCircle: {color: emptyCircle, colorName: 'Empty circle'}
 		};
-
-		this.handleClick = this.handleClick.bind(this);
-		this.handlePaletteCircleClick = this.handlePaletteCircleClick.bind(this);
 	}
 
 
@@ -116,51 +113,58 @@ class Mastermind extends Component
 
 	createNewFeedbackRow(row, winningColors)
 	{
-		let newFeedbackRow = [];
+		let numberCorrectSpots = 0;
+		let numberCorrectColors = 0;
 
-		let numCorrectSpots = this.getNumberOfCorrectSpots(row, winningColors);
-		let numCorrectColors = this.getNumberOfCorrectColors(row, winningColors);
+		let guess_color_used = [false, false, false, false];
+		let secret_color_used = [false, false, false, false];
 
-		for(let i = 0; i < numCorrectSpots; i++)
+		for(let i = 0; i < winningColors.length; i++)
 		{
-			// Add as many red circles as needed.
-			if(i < numCorrectSpots)
+			if(winningColors[i].colorName === row[i].colorName)
 			{
-				newFeedbackRow.push({
-					color: red,
-					colorName: 'Red'
-				});
+				guess_color_used[i] = secret_color_used[i] = true;
+				numberCorrectSpots += 1;
 			}
 		}
 
-		for(let i = 0; i < numCorrectColors; i++)
+		for(let i = 0; i < row.length; i++)
 		{
-			// Add as many white circles as needed.
-			if(i < numCorrectColors)
+			if(!guess_color_used[i])
 			{
-				newFeedbackRow.push({
-					color: emptyCircle,
-					colorName: 'Empty circle'
-				});
+				for(let j = 0; j < winningColors.length; j++)
+				{
+					if(!secret_color_used[j] && winningColors[j].colorName === row[i].colorName)
+					{
+						secret_color_used[j] = true;
+						numberCorrectColors += 1;
+						break
+					}
+				}
 			}
+		}
+
+		let newFeedbackRow = [];
+
+		// Add as many red circles as needed.
+		for(let i = 0; i < numberCorrectSpots; i++)
+		{
+			newFeedbackRow.push({
+				color: red,
+				colorName: 'Red'
+			});
+		}
+
+		// Add as many white circles as needed.
+		for(let i = 0; i < numberCorrectColors; i++)
+		{
+			newFeedbackRow.push({
+				color: emptyCircle,
+				colorName: 'Empty circle'
+			});
 		}
 
 		return newFeedbackRow;
-	}
-
-
-	getNumberOfCorrectSpots(row, winningColors)
-	{
-		let numCorrectSpots = 0;
-		row.forEach((v, idx) => numCorrectSpots += v.colorName === winningColors[idx].colorName ? 1 : 0);
-
-		return numCorrectSpots;
-	}
-
-
-	getNumberOfCorrectColors(row, winningColors)
-	{
-		return 0;
 	}
 
 
@@ -200,26 +204,6 @@ class Mastermind extends Component
 	}
 
 
-	mastermindPalette(props)
-	{
-		return (
-			<table className="palette_circles">
-				<tbody>
-				<tr>
-					{
-						props.paletteColors.map((paletteElement, idx) =>
-							<td key={idx} onClick={() => props.handlePaletteCircleClick(paletteElement)}>
-								<img className="large_circle" src={paletteElement.color} alt={paletteElement.colorName}/>
-							</td>
-						)
-					}
-				</tr>
-				</tbody>
-			</table>
-		);
-	}
-
-
 	winningRow()
 	{
 		return (
@@ -240,44 +224,36 @@ class Mastermind extends Component
 	}
 
 
-	mastermindTableRowFeedback(props)
+	mastermindPalette()
 	{
-		// The 'current' row doesn't have a feedback row, so exclude it.
-		if (props.rowIdx >= 0)
-		{
-			return (
-				<td key={props.rowIdx}>
-					<table>
-						<tbody className="feedback_table">
-						<tr>
-							{
-								props.feedbackRow.map((circle, idx) =>
-									<td key={idx}><img className="small_circle" src={circle.color} alt={circle.colorName}/></td>
-								)
-							}
-						</tr>
-						</tbody>
-					</table>
-				</td>
-			);
-		}
-		else
-		{
-			return <td key={this.props.rowIdx}></td>
-		}
+		return (
+			<table className="palette_circles">
+				<tbody>
+				<tr>
+					{
+						this.paletteColors.map((paletteElement, idx) =>
+							<td key={idx} onClick={() => this.handlePaletteCircleClick(paletteElement)}>
+								<img className="large_circle" src={paletteElement.color} alt={paletteElement.colorName}/>
+							</td>
+						)
+					}
+				</tr>
+				</tbody>
+			</table>
+		);
 	}
 
 
-	mastermindTable(props)
+	mastermindTable()
 	{
 		return (
 			<table className="mastermind_table">
 				<tbody>
 				{
-					props.mastermindArray.map((row, rowIdx) =>
+					this.state.mastermindArray.map((row, rowIdx) =>
 						<tr key={rowIdx}>
-							{this.mastermindTableRow({row: row, rowIdx: rowIdx, handleClick: this.handleClick})}
-							{this.mastermindTableRowFeedback({feedbackRow: props.feedbackArray[rowIdx - 1], rowIdx: rowIdx - 1})}
+							{this.mastermindTableRow({row: row, rowIdx: rowIdx})}
+							{this.mastermindTableRowFeedback({feedbackRow: this.state.feedbackArray[rowIdx - 1], rowIdx: rowIdx - 1})}
 						</tr>
 					)
 				}
@@ -291,11 +267,40 @@ class Mastermind extends Component
 	{
 		return (
 			props.row.map((circle, colIdx) =>
-				<td key={colIdx} onClick={() => props.handleClick(props.rowIdx, colIdx)}>
+				<td key={colIdx} onClick={() => this.handleClick(props.rowIdx, colIdx)}>
 					<img className="large_circle" src={circle.color} alt={circle.colorName}/>
 				</td>
 			)
 		);
+	}
+
+
+	mastermindTableRowFeedback(props)
+	{
+		// The 'current' row doesn't have a feedback row, so exclude it.
+		if (props.rowIdx >= 0)
+		{
+			return (
+				<td key={props.rowIdx}>
+					<table>
+						<tbody className="feedback_table">
+							<tr>
+								{props.feedbackRow.length > 0 ? <td key={0}><img className="small_circle" src={props.feedbackRow[0].color} alt={props.feedbackRow[0].colorName}/></td> : <td key={0}/>}
+								{props.feedbackRow.length > 1 ? <td key={1}><img className="small_circle" src={props.feedbackRow[1].color} alt={props.feedbackRow[1].colorName}/></td> : <td key={1}/>}
+							</tr>
+							<tr>
+								{props.feedbackRow.length > 2 ? <td key={2}><img className="small_circle" src={props.feedbackRow[2].color} alt={props.feedbackRow[2].colorName}/></td> : <td key={2}/>}
+								{props.feedbackRow.length > 3 ? <td key={3}><img className="small_circle" src={props.feedbackRow[3].color} alt={props.feedbackRow[3].colorName}/></td> : <td key={3}/>}
+							</tr>
+						</tbody>
+					</table>
+				</td>
+			);
+		}
+		else
+		{
+			return <td key={this.props.rowIdx}></td>
+		}
 	}
 
 
@@ -306,8 +311,8 @@ class Mastermind extends Component
 				{this.statusRow()}
 				{this.winningRow()}
 				<div style={{height: 500 - (this.state.mastermindArray.length * 58) + "px"}}>&nbsp;</div>
-				{this.mastermindTable({mastermindArray: this.state.mastermindArray, feedbackArray: this.state.feedbackArray, winningColorsArray: this.state.winningColorsArray, handleClick: this.handleClick, addNewRow: this.addNewRow})}
-				{this.mastermindPalette({paletteColors: this.paletteColors, handlePaletteCircleClick: this.handlePaletteCircleClick})}
+				{this.mastermindTable()}
+				{this.mastermindPalette()}
 
 			</div>
 		);
